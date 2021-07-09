@@ -167,9 +167,9 @@ def randomize_participants(new_contacts):
     list_vanid = new_contacts['VanID'].tolist()
     random.shuffle(list_vanid)
     n = 3 # number of groups
-    groups = np.array_split(list_vanid, 3)
+    randomized_participants = np.array_split(list_vanid, 3)
    
-    return groups
+    return randomized_participants
 
 def combineDictList(*args):
     result = {}
@@ -180,18 +180,32 @@ def combineDictList(*args):
     return result
 
 
-def sort_participants(groups):
+def sort_participants(randomized_participants):
 
-    group_strive = {"vanid": groups[0].tolist(), "group" : ["Strive"] * len(groups[0]) }
-    group_control = {"vanid" : groups[1].tolist(), "group" : ["Control"] * len(groups[1])}
-    group_voicemail = {"vanid" : groups[2].tolist(), "group" : ["Voicemail"] * len(groups[2])}
-    ipdb.set_trace()
-    participant_groups = combineDictList(group_strive, group_control)
-    participant_groups = combineDictList(participant_groups, group_voicemail)
+    group_strive = {"vanid": randomized_participants[0].tolist(), "participant_group" : ["Strive"] * len(randomized_participants[0]) }
+    group_control = {"vanid" : randomized_participants[1].tolist(), "participant_group" : ["Control"] * len(randomized_participants[1])}
+    group_voicemail = {"vanid" : randomized_participants[2].tolist(), "participant_group" : ["Voicemail"] * len(randomized_participants[2])}
+    sorted_participants = combineDictList(group_strive, group_control)
+    sorted_participants = combineDictList(sorted_participants, group_voicemail)
 
-    return participant_groups
 
-def send_contacts_to_strive(df_for_strive):
+    return sorted_participants
+
+def select_voicemail_participants(sorted_participants, new_contacts):
+    sorted_participants_df = pd.DataFrame.from_dict(sorted_participants)
+    voicemail_vanids = sorted_participants_df.loc[sorted_participants_df['participant_group'] == 'Voicemail']['vanid']
+    voicemail_participants = new_contacts.loc[new_contacts['VanID'].isin(voicemail_vanids)]
+
+    # Write voicemail group to CSV for email
+    voicemail_participants.to_csv('targets/group_voicemail.csv') 
+
+def select_strive_participants(sorted_participants, new_contacts):
+    sorted_participants_df = pd.DataFrame.from_dict(sorted_participants)
+    strive_vanids = sorted_participants_df.loc[sorted_participants_df['participant_group'] == 'Strive']['vanid']
+    strive_participants = new_contacts.loc[new_contacts['VanID'].isin(strive_vanids)]
+
+    return strive_participants
+def send_contacts_to_strive(strive_participants):
     """
     Takes the data frame from the `prepare_data` function and sends each contact
     to Strive and adds them to the "EA API member" group.
@@ -199,7 +213,7 @@ def send_contacts_to_strive(df_for_strive):
 
     strive_headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + strive_key}
 
-    for index, row in df_for_strive.iterrows():
+    for index, row in strive_participants.iterrows():
         phone_number = row['Phone']
         first_name = row['FirstName']
         if pd.isnull(first_name):
@@ -225,14 +239,21 @@ def send_contacts_to_strive(df_for_strive):
         else:
         	logger.info(f"Was not able to add {first_name} {last_name} to Stive. Error: {response.status_code}")
 
-def push_to_redshift(participant_groups):
+def push_to_redshift(sorted_participants):
     """
     Take the participant grouping and push to Redshift. 
     """
+    existing_vanids = rs.query("""
+                    select vanid from sunrise.welcome_flow_experiment_participants
+                    """)
 
-    results = pd.DataFrame.from_dict(participant_groups)
-    results = results[['vanid', 'group']]
-    result_table = Table.from_dataframe(results)
+    new_vanids = pd.DataFrame.from_dict(sorted_participants)
+    # Reorder dataframe with vanid in uniqueid spot
+    new_vanids = new_vanids[['vanid', 'participant_group']]
+    # Remove existing vanids from new_vanids 
+    new_vanids = new_vanids.loc[~new_vanids['vanid'].isin(existing_vanids)]
+    # Convert dataframe to Parsons table for copy to Redshift 
+    result_table = Table.from_dataframe(new_vanids)
 
     # copy Table into Redshift, append new rows
     rs.copy(result_table, 'sunrise.welcome_flow_experiment_participants' ,if_exists='append', distkey='vanid', sortkey = None, alter_table = True)
@@ -242,8 +263,9 @@ if __name__ == "__main__":
     everyaction_download_url = get_every_action_contacts(everyaction_headers, everyaction_auth)
     downloadLink = get_export_job(everyaction_download_url, everyaction_headers, everyaction_auth)
     new_contacts = prepare_data(downloadLink)
-    groups = randomize_participants(new_contacts)
-    participant_groups = sort_participants(groups)
-    #send_contacts_to_strive(group_strive)
-    push_to_redshift(participant_groups)
+    randomized_participants = randomize_participants(new_contacts)
+    sorted_participants = sort_participants(randomized_participants)
+    strive_participants = select_strive_participants(sorted_participants, new_contacts)
+    send_contacts_to_strive(strive_participants)
+    push_to_redshift(sorted_participants)
     
