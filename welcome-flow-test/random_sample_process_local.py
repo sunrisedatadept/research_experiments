@@ -15,6 +15,13 @@ import random
 import ipdb
 import dictlib
 import numpy as np
+import base64
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, FileType, Disposition)
+
+# Set seed
+random.seed(10)
+
 
 # Set parameters
 delta  = timedelta(hours =  24) ## Set this to the frequency of your Container Script
@@ -196,8 +203,9 @@ def select_voicemail_participants(sorted_participants, new_contacts):
     voicemail_vanids = sorted_participants_df.loc[sorted_participants_df['participant_group'] == 'Voicemail']['vanid']
     voicemail_participants = new_contacts.loc[new_contacts['VanID'].isin(voicemail_vanids)]
 
+    return voicemail_participants
     # Write voicemail group to CSV for email
-    voicemail_participants.to_csv('targets/group_voicemail.csv') 
+    # voicemail_participants.to_csv('targets/group_voicemail.csv') 
 
 def select_strive_participants(sorted_participants, new_contacts):
     sorted_participants_df = pd.DataFrame.from_dict(sorted_participants)
@@ -239,6 +247,32 @@ def send_contacts_to_strive(strive_participants):
         else:
         	logger.info(f"Was not able to add {first_name} {last_name} to Stive. Error: {response.status_code}")
 
+def send_email(voicemail_participants):
+    message = Mail(
+        from_email='brittany@sunrisemovement.org',
+        to_emails='brittany@sunrisemovement.org',
+        subject='Testing Automation of Voicemail Drop CSV',
+        html_content='Here is your CSV')
+
+    voicemail_participants.to_csv('group_voicemail.csv')
+    with open('group_voicemail.csv', 'rb') as f:
+        data = f.read()
+        f.close()
+    encoded_file = base64.b64encode(data).decode()
+
+    attachedFile = Attachment(
+        FileContent(encoded_file),
+        FileName('group_voicemail.csv'),
+        FileType('text/csv'),
+        Disposition('attachment')
+    )
+    message.attachment = attachedFile
+
+    sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+    response = sg.send(message)
+    print(response.status_code, response.body, response.headers)
+
+
 def push_to_redshift(sorted_participants):
     """
     Take the participant grouping and push to Redshift. 
@@ -266,6 +300,8 @@ if __name__ == "__main__":
     randomized_participants = randomize_participants(new_contacts)
     sorted_participants = sort_participants(randomized_participants)
     strive_participants = select_strive_participants(sorted_participants, new_contacts)
+    voicemail_participants = select_voicemail_participants(sorted_participants, new_contacts)
     send_contacts_to_strive(strive_participants)
     push_to_redshift(sorted_participants)
+    send_email(voicemail_participants)
     
