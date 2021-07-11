@@ -37,6 +37,7 @@ os.environ['AWS_SECRET_ACCESS_KEY']
 van_key = os.environ['VAN_PASSWORD']
 strive_key = os.environ['STRIVE_PASSWORD']
 campaign_id = os.environ['STRIVE_CAMPAIGN_ID']
+send_grid_api_key = os.environ['SEND_GRID_PASSWORD']
 
 # Set EA API credentials
 username = 'welcometext'  ## This can be anything
@@ -265,7 +266,7 @@ def send_email(voicemail_participants):
     )
     message.attachment = attachedFile
 
-    sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+    sg = SendGridAPIClient(send_grid_api_key)
     response = sg.send(message)
     print(response.status_code, response.body, response.headers)
 
