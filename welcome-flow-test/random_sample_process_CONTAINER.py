@@ -25,8 +25,16 @@ random.seed(10)
 # Set parameters
 delta  = timedelta(hours =  24) ## Set this to the frequency of your Container Script
 
-# Set local environmental variables
-van_key = os.environ['VAN_API_KEY']
+# Civis environmental variables
+os.environ['REDSHIFT_PORT']
+os.environ['REDSHIFT_DB'] = os.environ['REDSHIFT_DATABASE']
+os.environ['REDSHIFT_HOST']
+os.environ['REDSHIFT_USERNAME'] = os.environ['REDSHIFT_CREDENTIAL_USERNAME']
+os.environ['REDSHIFT_PASSWORD'] = os.environ['REDSHIFT_CREDENTIAL_PASSWORD']
+os.environ['S3_TEMP_BUCKET'] = 'parsons-tmc'
+os.environ['AWS_ACCESS_KEY_ID']
+os.environ['AWS_SECRET_ACCESS_KEY']
+van_key = os.environ['VAN_PASSWORD']
 strive_key = os.environ['STRIVE_KEY']
 campaign_id = os.environ['STRIVE_CAMPAIGN_ID']
 
@@ -36,16 +44,6 @@ db_mode = '1'    ## Specifying the NGP side of VAN
 password = f'{van_key}|{db_mode}' ## Create the password from the key and the mode combined
 everyaction_auth = HTTPBasicAuth(username, password)
 everyaction_headers = {"headers" : "application/json"}
-
-# Local environmental variables
-os.environ['REDSHIFT_PORT']
-os.environ['REDSHIFT_DB'] = os.environ['REDSHIFT_DATABASE']
-os.environ['REDSHIFT_HOST']
-os.environ['REDSHIFT_USERNAME'] = os.environ['REDSHIFT_CREDENTIAL_USERNAME']
-os.environ['REDSHIFT_PASSWORD'] = os.environ['REDSHIFT_CREDENTIAL_PASSWORD']
-os.environ['S3_TEMP_BUCKET'] = 'parsons-tmc'
-os.environ['AWS_ACCESS_KEY_ID']
-os.environ['AWS_SECRET_ACCESS_KEY']
 
 # Initiate Redshift instance
 rs = Redshift()
