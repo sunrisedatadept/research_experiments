@@ -4,7 +4,7 @@ import requests
 from parsons import Redshift, Table, VAN, S3, utilities
 from requests.auth import HTTPBasicAuth
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import os
 import logging
 import json
