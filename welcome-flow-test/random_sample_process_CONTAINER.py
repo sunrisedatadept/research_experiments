@@ -282,6 +282,8 @@ def push_to_redshift(sorted_participants):
     new_vanids = pd.DataFrame.from_dict(sorted_participants)
     # Reorder dataframe with vanid in uniqueid spot
     new_vanids = new_vanids[['vanid', 'participant_group']]
+    # Add created_at column
+    new_vanids['created_at'] = date.today()
     # Remove existing vanids from new_vanids 
     new_vanids = new_vanids.loc[~new_vanids['vanid'].isin(existing_vanids)]
     # Convert dataframe to Parsons table for copy to Redshift 

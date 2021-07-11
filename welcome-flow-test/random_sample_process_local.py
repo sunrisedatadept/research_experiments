@@ -4,7 +4,7 @@ import requests
 from parsons import Redshift, Table, VAN, S3, utilities
 from requests.auth import HTTPBasicAuth
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import os
 import logging
 import json
@@ -284,6 +284,8 @@ def push_to_redshift(sorted_participants):
     new_vanids = pd.DataFrame.from_dict(sorted_participants)
     # Reorder dataframe with vanid in uniqueid spot
     new_vanids = new_vanids[['vanid', 'participant_group']]
+    # Add created_at column
+    new_vanids['created_at'] = date.today()
     # Remove existing vanids from new_vanids 
     new_vanids = new_vanids.loc[~new_vanids['vanid'].isin(existing_vanids)]
     # Convert dataframe to Parsons table for copy to Redshift 
