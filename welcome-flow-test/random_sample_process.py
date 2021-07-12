@@ -263,7 +263,7 @@ def send_contacts_to_strive(strive_participants):
 def send_email(voicemail_participants):
     message = Mail(
         from_email='brittany@sunrisemovement.org',
-        to_emails='brittany@sunrisemovement.org', # zapriseslybroadcast@robot.zapier.com
+        to_emails='zapriseslybroadcast@robot.zapier.com', # 
         subject='Daily Automation of Voicemail Drop CSV',
         html_content='Here is your CSV')
 
