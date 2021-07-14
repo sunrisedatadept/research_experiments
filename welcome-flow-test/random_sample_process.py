@@ -52,7 +52,7 @@ except KeyError:
     van_key = os.environ['VAN_API_KEY']
     strive_key = os.environ['STRIVE_KEY']
     campaign_id = os.environ['STRIVE_CAMPAIGN_ID']
-    os.environ.get('SENDGRID_API_KEY')
+    send_grid_api_key = os.environ['SENDGRID_API_KEY']
 
 # Set EA API credentials
 username = 'welcometext'  ## This can be anything
@@ -63,9 +63,6 @@ everyaction_headers = {"headers" : "application/json"}
 
 # Initiate Redshift instance
 rs = Redshift()
-
-# Strive parameters
-strive_url = "https://api.strivedigital.org/"
 
 ##### Set up logger #####
 logger = logging.getLogger(__name__)
@@ -161,13 +158,18 @@ def prepare_data(downloadLink):
     yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
     new_contacts = df.loc[df['DateCreated'] ==  yesterday]
 
+    # Filter for contacts with an phone number 
+    new_contacts = new_contacts.dropna(subset=['Phone'])
+
+    # Fill in missing names with Friend
+    new_contacts['FirstName'] = new_contacts['FirstName'].replace(np.nan, 'Friend')
+
     if len(new_contacts) > 0:
         logger.info(f"Found {len(new_contacts)} new contacts. Checking if they are opted in.")
     else:
         sys.exit("No contacts that were created today. Exiting.")
 
-    # Filter for contacts that have opted in. Opted in = 1
-    new_contacts = new_contacts.loc[new_contacts['PhoneOptInStatus'] == 1.0]
+    # Reduce dataframe to key columns
     new_contacts = new_contacts[["VanID", "FirstName", "LastName", "Phone"]]
     if len(new_contacts) != 0:
         logger.info("New folk to welcome! Let's send to Strive. They'll handle any deduping.")
@@ -180,7 +182,7 @@ def randomize_participants(new_contacts):
     """
     Takes the downloaded new contacts and randomly sorts them into one of 3 trial groups.
 
-    Group 1: Receives a Strive text
+    Group 1: Receives a Spoke text
     Group 2: Control
     Group 3: Receives a Voicemail drop 
     """
@@ -192,6 +194,9 @@ def randomize_participants(new_contacts):
     return randomized_participants
 
 def combineDictList(*args):
+    """
+    Helper function to combine values of n dictionaries into one dictionary with the same keys
+    """
     result = {}
     for dic in args:
         for key in (result.keys() | dic.keys()):
@@ -201,8 +206,12 @@ def combineDictList(*args):
 
 
 def sort_participants(randomized_participants):
+    """
+    Takes the randomized participants and appends the group assignment name. 
+    Reassambles the separate groups into one dictionary/sample
+    """
 
-    group_strive = {"vanid": randomized_participants[0].tolist(), "participant_group" : ["Strive"] * len(randomized_participants[0]) }
+    group_strive = {"vanid": randomized_participants[0].tolist(), "participant_group" : ["Text"] * len(randomized_participants[0]) }
     group_control = {"vanid" : randomized_participants[1].tolist(), "participant_group" : ["Control"] * len(randomized_participants[1])}
     group_voicemail = {"vanid" : randomized_participants[2].tolist(), "participant_group" : ["Voicemail"] * len(randomized_participants[2])}
     sorted_participants = combineDictList(group_strive, group_control)
@@ -211,71 +220,32 @@ def sort_participants(randomized_participants):
 
     return sorted_participants
 
-def select_voicemail_participants(sorted_participants, new_contacts):
-    sorted_participants_df = pd.DataFrame.from_dict(sorted_participants)
-    voicemail_vanids = sorted_participants_df.loc[sorted_participants_df['participant_group'] == 'Voicemail']['vanid']
-    voicemail_participants = new_contacts.loc[new_contacts['VanID'].isin(voicemail_vanids)]
-
-    return voicemail_participants
-    # Write voicemail group to CSV for email
-    # voicemail_participants.to_csv('targets/group_voicemail.csv') 
-
-def select_strive_participants(sorted_participants, new_contacts):
-    sorted_participants_df = pd.DataFrame.from_dict(sorted_participants)
-    strive_vanids = sorted_participants_df.loc[sorted_participants_df['participant_group'] == 'Strive']['vanid']
-    strive_participants = new_contacts.loc[new_contacts['VanID'].isin(strive_vanids)]
-
-    return strive_participants
-def send_contacts_to_strive(strive_participants):
+def select_participants(group, sorted_participants, new_contacts):
     """
-    Takes the data frame from the `prepare_data` function and sends each contact
-    to Strive and adds them to the "EA API member" group.
+    Partition the new contacts dataframe into groups
     """
+    sorted_participants_df = pd.DataFrame.from_dict(sorted_participants)
+    group_vanids = sorted_participants_df.loc[sorted_participants_df['participant_group'] == group]['vanid']
+    participants = new_contacts.loc[new_contacts['VanID'].isin(group_vanids)]
 
-    strive_headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + strive_key}
+    return participants
 
-    for index, row in strive_participants.iterrows():
-        phone_number = row['Phone']
-        first_name = row['FirstName']
-        if pd.isnull(first_name):
-            first_name = "Friend"
-        last_name = row['LastName']
-        if pd.isnull(last_name):
-            last_name = "Friend"
-        payload = {
-			    "phone_number": phone_number,
-			    "campaign_id": campaign_id,
-			    "first_name": first_name,
-			    "last_name": last_name,
-			    "opt_in": True,
-			      "groups": [
-			        {
-			          "name": "Welcome Flow Experiment"
-			        }
-   				  ]
-                }
-        response = requests.request("POST", 'https://api.strivedigital.org/members', headers = strive_headers, data = json.dumps(payload))
-        if response.status_code == 201:
-        	logger.info(f"Successfully added: {first_name} {last_name}")
-        else:
-        	logger.info(f"Was not able to add {first_name} {last_name} to Stive. Error: {response.status_code}")
-
-def send_email(voicemail_participants):
+def send_email(group, csv_name, to_email):
     message = Mail(
         from_email='brittany@sunrisemovement.org',
-        to_emails='zapriseslybroadcast@robot.zapier.com', # 
-        subject='Daily Automation of Voicemail Drop CSV',
+        to_emails=to_email, # 
+        subject='Daily Welcome Flow Experiment CSV',
         html_content='Here is your CSV')
 
-    voicemail_participants.to_csv('group_voicemail.csv')
-    with open('group_voicemail.csv', 'rb') as f:
+    group.to_csv(csv_name)
+    with open(csv_name, 'rb') as f:
         data = f.read()
         f.close()
     encoded_file = base64.b64encode(data).decode()
 
     attachedFile = Attachment(
         FileContent(encoded_file),
-        FileName('group_voicemail.csv'),
+        FileName(csv_name),
         FileType('text/csv'),
         Disposition('attachment')
     )
@@ -298,7 +268,7 @@ def push_to_redshift(sorted_participants):
     # Reorder dataframe with vanid in uniqueid spot
     new_vanids = new_vanids[['vanid', 'participant_group']]
     # Add created_at column
-    new_vanids['created_at'] = date.today()
+    new_vanids['tested_at'] = date.today()
     # Remove existing vanids from new_vanids 
     new_vanids = new_vanids[~new_vanids['vanid'].isin(existing_vanids)]
     # Convert dataframe to Parsons table for copy to Redshift 
@@ -314,9 +284,9 @@ if __name__ == "__main__":
     new_contacts = prepare_data(downloadLink)
     randomized_participants = randomize_participants(new_contacts)
     sorted_participants = sort_participants(randomized_participants)
-    strive_participants = select_strive_participants(sorted_participants, new_contacts)
-    voicemail_participants = select_voicemail_participants(sorted_participants, new_contacts)
-    send_contacts_to_strive(strive_participants)
+    texting_participants = select_participants("Text", sorted_participants, new_contacts)
+    voicemail_participants = select_participants("Voicemail", sorted_participants, new_contacts)
     push_to_redshift(sorted_participants)
-    send_email(voicemail_participants)
-    
+    send_email(voicemail_participants, "daily_voicemail_group.csv", "brittany@sunrisemovement.org") #zapriseslybroadcast@robot.zapier.com
+    send_email(texting_participants, "daily_text_group.csv", "brittany@sunrisemovement.org") #tnt@nagog.com
+
