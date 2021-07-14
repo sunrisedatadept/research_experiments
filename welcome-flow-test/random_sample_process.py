@@ -287,6 +287,6 @@ if __name__ == "__main__":
     texting_participants = select_participants("Text", sorted_participants, new_contacts)
     voicemail_participants = select_participants("Voicemail", sorted_participants, new_contacts)
     push_to_redshift(sorted_participants)
-    send_email(voicemail_participants, "daily_voicemail_group.csv", "brittany@sunrisemovement.org") #zapriseslybroadcast@robot.zapier.com
-    send_email(texting_participants, "daily_text_group.csv", "brittany@sunrisemovement.org") #tnt@nagog.com
+    send_email(voicemail_participants, "daily_voicemail_group.csv", "zapriseslybroadcast@robot.zapier.com") 
+    send_email(texting_participants, "daily_text_group.csv", "tnt@nagog.com") 
 
