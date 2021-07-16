@@ -281,6 +281,7 @@ if __name__ == "__main__":
     randomized_participants = randomize_participants(new_contacts)
     sorted_participants = sort_participants(randomized_participants)
     texting_participants = select_participants("Text", sorted_participants, new_contacts)
+    texting_participants.columns = ["vanid", "firstName", "lastName", "cell"]
     voicemail_participants = select_participants("Voicemail", sorted_participants, new_contacts)
     push_to_redshift(sorted_participants)
     send_email(voicemail_participants, "daily_voicemail_group.csv", "zapriseslybroadcast@robot.zapier.com") 
