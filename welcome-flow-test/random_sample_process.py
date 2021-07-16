@@ -35,8 +35,6 @@ try:
     os.environ['AWS_ACCESS_KEY_ID']
     os.environ['AWS_SECRET_ACCESS_KEY']
     van_key = os.environ['VAN_PASSWORD']
-    strive_key = os.environ['STRIVE_PASSWORD']
-    campaign_id = os.environ['STRIVE_CAMPAIGN_ID']
     send_grid_api_key = os.environ['SEND_GRID_PASSWORD']
 
 #If running locally, load this env
@@ -50,8 +48,6 @@ except KeyError:
     os.environ['AWS_ACCESS_KEY_ID']
     os.environ['AWS_SECRET_ACCESS_KEY']
     van_key = os.environ['VAN_API_KEY']
-    strive_key = os.environ['STRIVE_KEY']
-    campaign_id = os.environ['STRIVE_CAMPAIGN_ID']
     send_grid_api_key = os.environ['SENDGRID_API_KEY']
 
 # Set EA API credentials
