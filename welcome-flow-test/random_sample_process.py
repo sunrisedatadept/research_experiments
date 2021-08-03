@@ -150,11 +150,11 @@ def prepare_data(downloadLink):
 
     # Filter for contacts that were created today
     df['DateCreated']= pd.to_datetime(df['DateCreated'], format='%Y-%m-%d')
-    
+
     yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
     new_contacts = df.loc[df['DateCreated'] ==  yesterday]
 
-    # Filter for contacts with an phone number 
+    # Filter for contacts with an phone number
     new_contacts = new_contacts.dropna(subset=['Phone'])
 
     # Fill in missing names with Friend
@@ -180,13 +180,13 @@ def randomize_participants(new_contacts):
 
     Group 1: Receives a Spoke text
     Group 2: Control
-    Group 3: Receives a Voicemail drop 
+    Group 3: Receives a Voicemail drop
     """
     list_vanid = new_contacts['VanID'].tolist()
     random.shuffle(list_vanid)
     n = 3 # number of groups
     randomized_participants = np.array_split(list_vanid, 3)
-   
+
     return randomized_participants
 
 def combineDictList(*args):
@@ -203,7 +203,7 @@ def combineDictList(*args):
 
 def sort_participants(randomized_participants):
     """
-    Takes the randomized participants and appends the group assignment name. 
+    Takes the randomized participants and appends the group assignment name.
     Reassambles the separate groups into one dictionary/sample
     """
 
@@ -229,7 +229,7 @@ def select_participants(group, sorted_participants, new_contacts):
 def send_email(group, csv_name, to_email):
     message = Mail(
         from_email='brittany@sunrisemovement.org',
-        to_emails=to_email, # 
+        to_emails=to_email, #
         subject='Daily Welcome Flow Experiment CSV',
         html_content='Here is your CSV')
 
@@ -254,7 +254,7 @@ def send_email(group, csv_name, to_email):
 
 def push_to_redshift(sorted_participants):
     """
-    Take the participant grouping and push to Redshift. 
+    Take the participant grouping and push to Redshift.
     """
     existing_vanids = rs.query("""
                     select vanid from sunrise.welcome_flow_experiment_participants
@@ -265,9 +265,9 @@ def push_to_redshift(sorted_participants):
     new_vanids = new_vanids[['vanid', 'participant_group']]
     # Add created_at column
     new_vanids['tested_at'] = date.today()
-    # Remove existing vanids from new_vanids 
+    # Remove existing vanids from new_vanids
     new_vanids = new_vanids[~new_vanids['vanid'].isin(existing_vanids)]
-    # Convert dataframe to Parsons table for copy to Redshift 
+    # Convert dataframe to Parsons table for copy to Redshift
     result_table = Table.from_dataframe(new_vanids)
 
     # copy Table into Redshift, append new rows
@@ -284,6 +284,5 @@ if __name__ == "__main__":
     texting_participants.columns = ["vanid", "firstName", "lastName", "cell"]
     voicemail_participants = select_participants("Voicemail", sorted_participants, new_contacts)
     push_to_redshift(sorted_participants)
-    send_email(voicemail_participants, "daily_voicemail_group.csv", "zapriseslybroadcast@robot.zapier.com") 
-    send_email(texting_participants, "daily_text_group.csv", "tnt@nagog.com") 
-
+    send_email(voicemail_participants, "daily_voicemail_group.csv", "zapriseslybroadcast@robot.zapier.com")
+    send_email(texting_participants, "daily_text_group.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"]) 
