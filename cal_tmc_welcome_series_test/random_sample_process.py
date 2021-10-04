@@ -205,8 +205,8 @@ def sort_participants(randomized_participants):
     group_tuesday = {"vanid": randomized_participants[0].tolist(), "participant_group" : ["Tuesday Welcome Call"] * len(randomized_participants[0]) }
     group_wednesday = {"vanid" : randomized_participants[1].tolist(), "participant_group" : ["Wednesday Anytime Action"] * len(randomized_participants[1])}
     group_friday = {"vanid" : randomized_participants[2].tolist(), "participant_group" : ["Friday Anytime Action"] * len(randomized_participants[2])}
-    sorted_participants = combineDictList(group_strive, group_control)
-    sorted_participants = combineDictList(sorted_participants, group_voicemail)
+    sorted_participants = combineDictList(group_tuesday, group_wednesday)
+    sorted_participants = combineDictList(sorted_participants, group_friday)
 
     return sorted_participants
 
@@ -220,11 +220,11 @@ def select_participants(group, sorted_participants, new_contacts):
 
     return participants
 
-def send_email(group, csv_name, to_email):
+def send_email(group, csv_name, to_email, subject):
     message = Mail(
         from_email='brittany@sunrisemovement.org',
         to_emails=to_email, #
-        subject='Daily Welcome Flow Experiment CSV',
+        subject=subject,
         html_content='Here is your CSV')
 
     group.to_csv(csv_name)
@@ -272,11 +272,19 @@ if __name__ == "__main__":
     everyaction_download_url = get_every_action_contacts(everyaction_headers, everyaction_auth)
     downloadLink = get_export_job(everyaction_download_url, everyaction_headers, everyaction_auth)
     new_contacts = prepare_data(downloadLink)
+    logger.info("Randomize participants")
     randomized_participants = randomize_participants(new_contacts)
     sorted_participants = sort_participants(randomized_participants)
-    texting_participants = select_participants("Text", sorted_participants, new_contacts)
-    texting_participants.columns = ["vanid", "firstName", "lastName", "cell"]
-    voicemail_participants = select_participants("Voicemail", sorted_participants, new_contacts)
+    # Send group of new participants to Redshift 
     push_to_redshift(sorted_participants)
-    send_email(voicemail_participants, "daily_voicemail_group.csv", "zapriseslybroadcast@robot.zapier.com")
-    send_email(texting_participants, "daily_text_group.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"]) 
+
+    sorted_participants.columns = ["vanid", "firstName", "lastName", "cell"]
+
+    tuesday_participants = select_participants("Tuesday Welcome Call", sorted_participants, new_contacts)
+    wednesday_participants = select_participants("Wednesday Anytime Action", sorted_participants, new_contacts)
+    friday_participants = select_participants("Friday Anytime Action", sorted_participants, new_contacts)
+
+    # Send 3 separate emails to texting team for each group    
+    send_email(tuesday_participants, "tuesday_welcome_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Tuesday Welcome Call Participants')
+    send_email(wednesday_participants, "wednesday_anytime_action_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Wednesday Anytime Action Participants')
+    send_email(friday_participants, "friday_anytime_action_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Friday Anytime Action Participants')
