@@ -57,8 +57,11 @@ password = f'{van_key}|{db_mode}' ## Create the password from the key and the mo
 everyaction_auth = HTTPBasicAuth(username, password)
 everyaction_headers = {"headers" : "application/json"}
 
-# Initiate Redshift instance
+# Instatiate Redshift instance
 rs = Redshift()
+
+# Instatiate VAN intance 
+van = VAN(db='EveryAction')
 
 ##### Set up logger #####
 logger = logging.getLogger(__name__)
@@ -266,6 +269,15 @@ def push_to_redshift(sorted_participants):
 
     # copy Table into Redshift, append new rows
     rs.copy(result_table, 'sunrise.welcome_email_experiment_participants' ,if_exists='append', distkey='vanid', sortkey = None, alter_table = True)
+
+def apply_actiivst_code(table, activist_code):
+    response = [{"activistCodeId": 18917,
+             "action": "Apply",
+             "type": "ActivistCode"}
+            ]
+    for vanid in table:
+        van.apply_response(vanid, response)
+
 
 if __name__ == "__main__":
     logger.info("Initiate Export Job")
