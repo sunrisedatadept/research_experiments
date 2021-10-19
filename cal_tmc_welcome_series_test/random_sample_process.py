@@ -17,7 +17,7 @@ import numpy as np
 import base64
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, FileType, Disposition)
-
+import ipdb
 # Set seed
 random.seed(10)
 
@@ -271,13 +271,13 @@ def push_to_redshift(sorted_participants):
     rs.copy(result_table, 'sunrise.welcome_email_experiment_participants' ,if_exists='append', distkey='vanid', sortkey = None, alter_table = True)
 
 def apply_activist_code(table, activist_code):
-    response = [{"activistCodeId": activist_code,
+    response = [{"activistCodeId": 4965345,
              "action": "Apply",
              "type": "ActivistCode"}
             ]
 
-    for row in table.rows():   
-        van.apply_response(row['vanid'], response)
+    for index, row in table.iterrows():
+        van.apply_response(row['VanID'], response)
 
 if __name__ == "__main__":
     logger.info("Initiate Export Job")
@@ -289,19 +289,17 @@ if __name__ == "__main__":
     sorted_participants = sort_participants(randomized_participants)
     # Send group of new participants to Redshift 
     push_to_redshift(sorted_participants)
-
-    # Rename columns appropriate for Spoke
-    sorted_participants.columns = ["vanid", "firstName", "lastName", "cell"]
-
+    
     # Separate sorted participants into three groups
     tuesday_participants = select_participants("Tuesday Welcome Call", sorted_participants, new_contacts)
     wednesday_participants = select_participants("Wednesday Anytime Action", sorted_participants, new_contacts)
     friday_participants = select_participants("Friday Anytime Action", sorted_participants, new_contacts)
 
     # Apply corect activist code to three groups
-    apply_activist_code(tuesday_participants, activist_code)
-    apply_activist_code(wednesday_participants, activist_code)
-    apply_actiapply_activist_codeivst_code(friday_participants, activist_code)
+    
+    apply_activist_code(tuesday_participants, 4965345)
+    apply_activist_code(wednesday_participants, 4965347)
+    apply_activist_code(friday_participants, 4965349)
 
     # Send 3 separate emails to texting team for each group    
     send_email(tuesday_participants, "tuesday_welcome_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Tuesday Welcome Call Participants')
