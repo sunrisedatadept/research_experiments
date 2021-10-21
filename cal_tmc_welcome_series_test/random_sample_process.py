@@ -172,6 +172,33 @@ def prepare_data(downloadLink):
    
     return new_contacts
 
+def remove_exclude_from_welcome_series(new_contacts, everyaction_headers):
+
+    # URL to access the Activist Code endpoint
+    base_url = "https://api.securevan.com/v4/people/"
+    job = "activistCodes"
+
+    # For every row in the new contacts table check if the contact has the "ExFromWelcomeSeries" activist code applied
+    # If so, drop the contact
+    for index, contact in new_contacts.iterrows():
+
+        # select the vanid
+        vanid = contact["vanid"]
+
+        # Connect to the API endpoint 
+        activist_code_url = base_url + str(vanid) + "/" + job
+        response = requests.get(
+            activist_code_url, headers=everyaction_headers, auth=everyaction_auth
+        )
+
+        # Drop contacts that have the "ExFromWelcomeSeries"
+        activist_codes = json.loads(response.text)["items"]
+
+        if "ExFromWelcomeSeries (Public)" in activist_codes:
+           new_contacts = new_contacts.drop(vanid)
+
+    return new_contacts
+
 def randomize_participants(new_contacts):
     """
     Takes the downloaded new contacts and randomly sorts them into one of 3 trial groups.
@@ -284,17 +311,22 @@ if __name__ == "__main__":
     everyaction_download_url = get_every_action_contacts(everyaction_headers, everyaction_auth)
     downloadLink = get_export_job(everyaction_download_url, everyaction_headers, everyaction_auth)
     new_contacts = prepare_data(downloadLink)
+    new_contacts = remove_exclude_from_welcome_series(new_contacts, everyaction_headers)
     logger.info("Randomize participants")
     randomized_participants = randomize_participants(new_contacts)
     sorted_participants = sort_participants(randomized_participants)
     # Send group of new participants to Redshift 
     push_to_redshift(sorted_participants)
     
-    # Separate sorted participants into three groups
+    # Separate sorted participants into three groups and apply correct columns
     tuesday_participants = select_participants("Tuesday Welcome Call", sorted_participants, new_contacts)
+    tuesday_participants.columns = ["vanid", "firstName", "lastName", "cell"]
+    
     wednesday_participants = select_participants("Wednesday Anytime Action", sorted_participants, new_contacts)
+    wednesday_participants.columns = ["vanid", "firstName", "lastName", "cell"]
+    
     friday_participants = select_participants("Friday Anytime Action", sorted_participants, new_contacts)
-
+    friday_participants.columns = ["vanid", "firstName", "lastName", "cell"]
     # Apply corect activist code to three groups
     
     apply_activist_code(tuesday_participants, 4965345)
