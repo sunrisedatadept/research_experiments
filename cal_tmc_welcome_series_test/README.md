@@ -27,6 +27,8 @@ Script written for a 2021 10 experiment in collaboration with TMC and Climate Ad
 
 ```
 pip install pandas
+pip install dictlib
+pip install sendgrid
 python path/to/random_sample_processpy
 
 
