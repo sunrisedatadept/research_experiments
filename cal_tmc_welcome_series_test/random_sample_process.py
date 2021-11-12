@@ -17,7 +17,7 @@ import numpy as np
 import base64
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, FileType, Disposition)
-import ipdb
+
 # Set seed
 random.seed(10)
 
@@ -313,10 +313,11 @@ if __name__ == "__main__":
     new_contacts = prepare_data(downloadLink)
     new_contacts = remove_exclude_from_welcome_series(new_contacts, everyaction_headers)
     logger.info("Randomize participants")
+    ipdb.set_trace()
     randomized_participants = randomize_participants(new_contacts)
     sorted_participants = sort_participants(randomized_participants)
     # Send group of new participants to Redshift 
-    push_to_redshift(sorted_participants)
+    # push_to_redshift(sorted_participants)
     
     # Separate sorted participants into three groups and apply correct columns
     tuesday_participants = select_participants("Tuesday Welcome Call", sorted_participants, new_contacts)
@@ -334,6 +335,6 @@ if __name__ == "__main__":
     apply_activist_code(friday_participants, 4965349)
 
     # Send 3 separate emails to texting team for each group    
-    send_email(tuesday_participants, "tuesday_welcome_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Tuesday Welcome Call Participants')
-    send_email(wednesday_participants, "wednesday_anytime_action_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Wednesday Anytime Action Participants')
-    send_email(friday_participants, "friday_anytime_action_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Friday Anytime Action Participants')
+    #send_email(tuesday_participants, "tuesday_welcome_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Tuesday Welcome Call Participants')
+    #send_email(wednesday_participants, "wednesday_anytime_action_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Wednesday Anytime Action Participants')
+    #send_email(friday_participants, "friday_anytime_action_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Friday Anytime Action Participants')
