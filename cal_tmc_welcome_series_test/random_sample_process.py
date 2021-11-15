@@ -61,7 +61,7 @@ everyaction_headers = {"headers" : "application/json"}
 rs = Redshift()
 
 # Instantiate VAN instance
-van = VAN(api_key=van_key, db=EveryAction)
+van = VAN(api_key=van_key, db='EveryAction')
 
 ##### Set up logger #####
 logger = logging.getLogger(__name__)
