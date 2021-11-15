@@ -60,9 +60,6 @@ everyaction_headers = {"headers" : "application/json"}
 # Instatiate Redshift instance
 rs = Redshift()
 
-# Instatiate VAN intance 
-van = VAN(db='EveryAction')
-
 ##### Set up logger #####
 logger = logging.getLogger(__name__)
 _handler = logging.StreamHandler()
