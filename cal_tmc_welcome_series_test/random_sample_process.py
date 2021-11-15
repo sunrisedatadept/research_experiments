@@ -180,7 +180,7 @@ def remove_exclude_from_welcome_series(new_contacts, everyaction_headers):
     for index, contact in new_contacts.iterrows():
 
         # select the vanid
-        vanid = contact["vanid"]
+        vanid = contact["VanID"]
 
         # Connect to the API endpoint 
         activist_code_url = base_url + str(vanid) + "/" + job
@@ -295,7 +295,7 @@ def push_to_redshift(sorted_participants):
     rs.copy(result_table, 'sunrise.welcome_email_experiment_participants' ,if_exists='append', distkey='vanid', sortkey = None, alter_table = True)
 
 def apply_activist_code(table, activist_code):
-    response = [{"activistCodeId": 4965345,
+    response = [{"activistCodeId": activist_code,
              "action": "Apply",
              "type": "ActivistCode"}
             ]
