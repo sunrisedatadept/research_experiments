@@ -310,7 +310,6 @@ if __name__ == "__main__":
     new_contacts = prepare_data(downloadLink)
     new_contacts = remove_exclude_from_welcome_series(new_contacts, everyaction_headers)
     logger.info("Randomize participants")
-    ipdb.set_trace()
     randomized_participants = randomize_participants(new_contacts)
     sorted_participants = sort_participants(randomized_participants)
     # Send group of new participants to Redshift 
