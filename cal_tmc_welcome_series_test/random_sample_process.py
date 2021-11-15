@@ -304,7 +304,7 @@ def apply_activist_code(table, activist_code):
             ]
 
     for index, row in table.iterrows():
-        van.apply_response(row['VanID'], response)
+        van.apply_response(row['vanid'], response)
 
 if __name__ == "__main__":
     logger.info("Initiate Export Job")
