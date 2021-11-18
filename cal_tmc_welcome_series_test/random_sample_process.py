@@ -17,7 +17,6 @@ import numpy as np
 import base64
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, FileType, Disposition)
-
 # Set seed
 random.seed(10)
 
@@ -286,7 +285,7 @@ def push_to_redshift(sorted_participants):
 
     new_vanids = pd.DataFrame.from_dict(sorted_participants)
     # Reorder dataframe with vanid in uniqueid spot
-    new_vanids = new_vanids[['vanid', 'participant_group']]
+    new_vanids = new_vanids[['participant_group', 'vanid']]
     # Add created_at column
     new_vanids['tested_at'] = date.today()
     # Remove existing vanids from new_vanids
