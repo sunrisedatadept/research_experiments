@@ -204,12 +204,11 @@ def randomize_participants(new_contacts):
 
     Group 1: Tuesday Welcome Call
     Group 2: Wednesday Anytime Action
-    Group 3: Friday Anytime Action
     """
     list_vanid = new_contacts['VanID'].tolist()
     random.shuffle(list_vanid)
-    n = 3 # number of groups
-    randomized_participants = np.array_split(list_vanid, 3)
+    n = 2 # number of groups
+    randomized_participants = np.array_split(list_vanid, 2)
 
     return randomized_participants
 
@@ -233,9 +232,7 @@ def sort_participants(randomized_participants):
 
     group_tuesday = {"vanid": randomized_participants[0].tolist(), "participant_group" : ["Tuesday Welcome Call"] * len(randomized_participants[0]) }
     group_wednesday = {"vanid" : randomized_participants[1].tolist(), "participant_group" : ["Wednesday Anytime Action"] * len(randomized_participants[1])}
-    group_friday = {"vanid" : randomized_participants[2].tolist(), "participant_group" : ["Friday Anytime Action"] * len(randomized_participants[2])}
     sorted_participants = combineDictList(group_tuesday, group_wednesday)
-    sorted_participants = combineDictList(sorted_participants, group_friday)
 
     return sorted_participants
 
@@ -324,15 +321,9 @@ if __name__ == "__main__":
     wednesday_participants = select_participants("Wednesday Anytime Action", sorted_participants, new_contacts)
     wednesday_participants.columns = ["vanid", "firstName", "lastName", "cell"]
     
-    friday_participants = select_participants("Friday Anytime Action", sorted_participants, new_contacts)
-    friday_participants.columns = ["vanid", "firstName", "lastName", "cell"]
-    # Apply corect activist code to three groups
-    
     apply_activist_code(tuesday_participants, 4965345)
     apply_activist_code(wednesday_participants, 4965347)
-    apply_activist_code(friday_participants, 4965349)
 
     # Send 3 separate emails to texting team for each group    
     send_email(tuesday_participants, "tuesday_welcome_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Tuesday Welcome Call Participants')
     send_email(wednesday_participants, "wednesday_anytime_action_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Wednesday Anytime Action Participants')
-    send_email(friday_participants, "friday_anytime_action_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Friday Anytime Action Participants')
