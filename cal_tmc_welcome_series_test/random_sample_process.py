@@ -125,7 +125,7 @@ def get_export_job(everyaction_download_url, everyaction_headers, everyaction_au
     	except:
     		logger.info("File not ready, trying again in 20 seconds")
 
-    if time.time() == timeout_start + timeout:
+    if time.time() >= timeout_start + timeout:
     	sys.exit("Export Job failed to download!")
     else:
     	logger.info('Export Job Complete!')
