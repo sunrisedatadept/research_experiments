@@ -120,7 +120,8 @@ def get_export_job(everyaction_download_url, everyaction_headers, everyaction_au
     	time.sleep(20) # twenty second delay
     	try:
     		response = requests.get(everyaction_download_url, headers = everyaction_headers, auth = everyaction_auth)
-    		downloadLink = response.json().get('files')[0].get('downloadUrl')
+    		logger.info(response)
+            downloadLink = response.json().get('files')[0].get('downloadUrl')
     		break
     	except:
     		logger.info("File not ready, trying again in 20 seconds")
