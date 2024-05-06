@@ -1,7 +1,7 @@
 # load the necessary packages
 import pandas as pd
 import requests
-from parsons import Redshift, Table, VAN, S3, utilities
+from parsons import GoogleBigQuery, Table, VAN, S3, utilities
 from requests.auth import HTTPBasicAuth
 import time
 from datetime import datetime, timedelta, date
@@ -17,6 +17,7 @@ import numpy as np
 import base64
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (Mail, Attachment, FileContent, FileName, FileType, Disposition)
+from canalespy import logger, setup_environment
 # Set seed
 random.seed(10)
 
@@ -25,14 +26,14 @@ delta  = timedelta(hours =  24) ## Set this to the frequency of your Container S
 
 #If running on container, load this env
 try:
-    os.environ['REDSHIFT_PORT']
-    os.environ['REDSHIFT_DB'] = os.environ['REDSHIFT_DATABASE']
-    os.environ['REDSHIFT_HOST']
-    os.environ['REDSHIFT_USERNAME'] = os.environ['REDSHIFT_CREDENTIAL_USERNAME']
-    os.environ['REDSHIFT_PASSWORD'] = os.environ['REDSHIFT_CREDENTIAL_PASSWORD']
-    os.environ['S3_TEMP_BUCKET'] = 'parsons-tmc'
-    os.environ['AWS_ACCESS_KEY_ID']
-    os.environ['AWS_SECRET_ACCESS_KEY']
+    #os.environ['REDSHIFT_PORT']
+    #os.environ['REDSHIFT_DB'] = os.environ['REDSHIFT_DATABASE']
+    #os.environ['REDSHIFT_HOST']
+    #os.environ['REDSHIFT_USERNAME'] = os.environ['REDSHIFT_CREDENTIAL_USERNAME']
+    #os.environ['REDSHIFT_PASSWORD'] = os.environ['REDSHIFT_CREDENTIAL_PASSWORD']
+    #os.environ['S3_TEMP_BUCKET'] = 'parsons-tmc'
+    #os.environ['AWS_ACCESS_KEY_ID']
+    #os.environ['AWS_SECRET_ACCESS_KEY']
     van_key = os.environ['VAN_PASSWORD']
     send_grid_api_key = os.environ['SEND_GRID_PASSWORD']
 
@@ -57,18 +58,20 @@ everyaction_auth = HTTPBasicAuth(username, password)
 everyaction_headers = {"headers" : "application/json"}
 
 # Instatiate Redshift instance
-rs = Redshift()
+#rs = Redshift()
 
 # Instantiate VAN instance
 van = VAN(api_key=van_key, db='EveryAction')
 
 ##### Set up logger #####
+'''
 logger = logging.getLogger(__name__)
 _handler = logging.StreamHandler()
 _formatter = logging.Formatter('%(levelname)s %(message)s')
 _handler.setFormatter(_formatter)
 logger.addHandler(_handler)
 logger.setLevel('INFO')
+'''
 
 
 #### Functions
@@ -273,12 +276,12 @@ def send_email(group, csv_name, to_email, subject):
     print(response.status_code, response.body, response.headers)
 
 
-def push_to_redshift(sorted_participants):
+def push_to_database(sorted_participants):
     """
     Take the participant grouping and push to Redshift.
     """
-    existing_vanids = rs.query("""
-                    select vanid from sunrise.welcome_email_experiment_participants
+    existing_vanids = db.query("""
+                    select vanid from main.welcome_email_experiment_participants
                     """)
 
     new_vanids = pd.DataFrame.from_dict(sorted_participants)
@@ -292,7 +295,7 @@ def push_to_redshift(sorted_participants):
     result_table = Table.from_dataframe(new_vanids)
 
     # copy Table into Redshift, append new rows
-    rs.copy(result_table, 'sunrise.welcome_email_experiment_participants' ,if_exists='append', distkey='vanid', sortkey = None, alter_table = True)
+    db.copy(result_table, 'main.welcome_email_experiment_participants' ,if_exists='append')
 
 def apply_activist_code(table, activist_code):
     response = [{"activistCodeId": activist_code,
@@ -303,7 +306,7 @@ def apply_activist_code(table, activist_code):
     for index, row in table.iterrows():
         van.apply_response(row['vanid'], response)
 
-if __name__ == "__main__":
+def main(db: GoogleBigQuery):
     logger.info("Initiate Export Job")
     everyaction_download_url = get_every_action_contacts(everyaction_headers, everyaction_auth)
     downloadLink = get_export_job(everyaction_download_url, everyaction_headers, everyaction_auth)
@@ -312,8 +315,8 @@ if __name__ == "__main__":
     logger.info("Randomize participants")
     randomized_participants = randomize_participants(new_contacts)
     sorted_participants = sort_participants(randomized_participants)
-    # Send group of new participants to Redshift 
-    push_to_redshift(sorted_participants)
+    # Send group of new participants to BigQuery 
+    push_to_database(sorted_participants)
     
     # Separate sorted participants into three groups and apply correct columns
     tuesday_participants = select_participants("Tuesday Welcome Call", sorted_participants, new_contacts)
@@ -328,3 +331,9 @@ if __name__ == "__main__":
     # Send 3 separate emails to texting team for each group    
     send_email(tuesday_participants, "tuesday_welcome_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Tuesday Welcome Call Participants')
     send_email(wednesday_participants, "wednesday_anytime_action_call_participants.csv", ["tnt@nagog.com", "jasy@sunrisemovement.org"], 'Wednesday Anytime Action Participants')
+
+if __name__ == "__main__":
+    setup_environment()
+    db = GoogleBigQuery()
+    main(db=db)
+    
